@@ -107,8 +107,11 @@ export const BetsService = {
    * transparence que le classement (`/api/leaderboard`), qui expose deja les
    * noms d'utilisateur publiquement.
    */
-  async listPublicBets(filters: { skip?: number; take?: number } = {}) {
+  async listPublicBets(filters: { eventId?: string; skip?: number; take?: number } = {}) {
     const bets = await prisma.bet.findMany({
+      where: filters.eventId
+        ? { selections: { some: { selection: { market: { eventId: filters.eventId } } } } }
+        : undefined,
       include: { selections: true, user: { select: { username: true } } },
       orderBy: { placedAt: "desc" },
       skip: filters.skip ?? 0,

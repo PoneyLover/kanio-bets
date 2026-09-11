@@ -13,9 +13,10 @@ export const betsRouter = Router();
 betsRouter.get(
   "/public",
   asyncHandler(async (req, res) => {
+    const eventId = typeof req.query.eventId === "string" ? req.query.eventId : undefined;
     const skip = Number(req.query.skip ?? 0);
     const take = Number(req.query.take ?? 50);
-    const bets = await BetsService.listPublicBets({ skip, take });
+    const bets = await BetsService.listPublicBets({ eventId, skip, take });
     res.json({ bets });
   })
 );
