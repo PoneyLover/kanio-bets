@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kanio-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kanio
+      POSTGRES_PASSWORD: kanio
+      POSTGRES_DB: kanio
+    ports:
+      - "5432:5432"
+    volumes:
+      - kanio_pg_data:/var/lib/postgresql/data
+
+volumes:
+  kanio_pg_data:

@@ -1,0 +1,378 @@
+// =============================================================================
+// KANIO - Schema Prisma
+// Monnaie virtuelle KANIO (code KAN) - AUCUNE valeur reelle, aucun lien avec
+// un moyen de paiement. Voir README.md.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // DATABASE_URL doit pointer vers l'endpoint pooler (PgBouncer) avec
+  // `pgbouncer=true` en prod/dev pour l'app ; DIRECT_URL (endpoint direct,
+  // sans pooler) est utilisee uniquement par Prisma Migrate/CLI. Voir README.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Utilisateurs
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String     @id @default(uuid())
+  username     String     @unique
+  email        String     @unique
+  passwordHash String
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+
+  // Solde en cache : TOUJOURS mis a jour dans la meme transaction Postgres
+  // qu'une ecriture WalletTransaction. La source de verite reste le ledger
+  // (somme des WalletTransaction) ; ce champ n'est qu'une optimisation de
+  // lecture reconciliable a tout moment via WalletService.reconcileBalance().
+  balanceCache Decimal    @default(0) @db.Decimal(14, 2) @map("balance_cache")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions   WalletTransaction[]
+  bets           Bet[]
+  auditLogsAsAdmin AuditLog[] @relation("AuditLogAdmin")
+  refreshTokens  RefreshToken[]
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// -----------------------------------------------------------------------------
+// Portefeuille / Ledger (monnaie virtuelle KANIO - code KAN)
+// -----------------------------------------------------------------------------
+
+enum TransactionType {
+  INITIAL_BALANCE
+  BET_PLACED
+  BET_WIN
+  BET_LOSS
+  BET_REFUND
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+  BONUS
+}
+
+model WalletTransaction {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           TransactionType
+  amount         Decimal         @db.Decimal(14, 2) // toujours positif ; le sens (+/-) est deduit du type
+  balanceBefore  Decimal         @db.Decimal(14, 2)
+  balanceAfter   Decimal         @db.Decimal(14, 2)
+  referenceType  String? // ex: "BET", "ADMIN_ACTION"
+  referenceId    String? // ex: betId, auditLogId
+  description    String
+  createdByAdminId String? // renseigne pour ADMIN_CREDIT / ADMIN_DEBIT
+  createdAt      DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@map("wallet_transactions")
+}
+
+// -----------------------------------------------------------------------------
+// Donnees sportives
+// -----------------------------------------------------------------------------
+
+model Sport {
+  id           String        @id @default(uuid())
+  key          String        @unique // ex: "football"
+  name         String
+  competitions Competition[]
+
+  @@map("sports")
+}
+
+model Competition {
+  id      String  @id @default(uuid())
+  sportId String
+  sport   Sport   @relation(fields: [sportId], references: [id], onDelete: Cascade)
+  name    String
+  country String?
+  events  Event[]
+
+  @@index([sportId])
+  @@map("competitions")
+}
+
+model Participant {
+  id      String @id @default(uuid())
+  name    String
+  shortName String?
+
+  homeEvents Event[] @relation("HomeParticipant")
+  awayEvents Event[] @relation("AwayParticipant")
+
+  @@map("participants")
+}
+
+enum EventStatus {
+  SCHEDULED
+  OPEN
+  SUSPENDED
+  CLOSED
+  FINISHED
+  CANCELLED
+}
+
+model Event {
+  id            String      @id @default(uuid())
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+
+  homeParticipantId String
+  homeParticipant   Participant @relation("HomeParticipant", fields: [homeParticipantId], references: [id])
+  awayParticipantId String
+  awayParticipant   Participant @relation("AwayParticipant", fields: [awayParticipantId], references: [id])
+
+  startTime DateTime
+  status    EventStatus @default(SCHEDULED)
+
+  // Resultat brut de l'evenement, saisi par un ADMIN (ex: {"homeScore":2,"awayScore":1})
+  // Utilise par SettlementService pour resoudre les marches.
+  resultPayload Json?
+  settledAt     DateTime?
+  cancelledAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  markets Market[]
+
+  @@index([competitionId])
+  @@index([status])
+  @@index([startTime])
+  @@map("events")
+}
+
+// -----------------------------------------------------------------------------
+// Marches / Selections / Cotes
+// -----------------------------------------------------------------------------
+
+enum MarketType {
+  MATCH_WINNER // 1X2
+  OVER_UNDER
+  CORRECT_SCORE
+  HANDICAP
+}
+
+enum MarketStatus {
+  OPEN
+  SUSPENDED
+  CLOSED
+  SETTLED
+  CANCELLED
+}
+
+model Market {
+  id      String       @id @default(uuid())
+  eventId String
+  event   Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  type   MarketType
+  name   String // libelle affiche, ex: "Vainqueur du match", "Total buts +/- 2.5"
+  line   Decimal?     @db.Decimal(6, 2) // seuil pour OVER_UNDER / valeur pour HANDICAP
+  status MarketStatus @default(OPEN)
+
+  settledAt   DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  selections Selection[]
+
+  @@index([eventId])
+  @@index([status])
+  @@map("markets")
+}
+
+enum SelectionResult {
+  PENDING
+  WON
+  LOST
+  VOID
+}
+
+model Selection {
+  id       String @id @default(uuid())
+  marketId String @map("market_id")
+  market   Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  label      String // libelle affiche, ex: "PSG", "Nul", "+2.5 buts"
+  outcomeKey String // cle machine, ex: "HOME", "DRAW", "AWAY", "OVER", "UNDER", "2-1"
+
+  currentOdds Decimal @db.Decimal(6, 3)
+  minOdds     Decimal @db.Decimal(6, 3) @default(1.01)
+  maxOdds     Decimal @db.Decimal(6, 3) @default(50.00)
+
+  // Cumul des mises placees sur cette selection - alimente OddsService
+  totalStaked Decimal @default(0) @db.Decimal(14, 2)
+  betCount    Int     @default(0)
+
+  result       SelectionResult @default(PENDING)
+  resultSetAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  oddsHistory   OddsHistory[]
+  betSelections BetSelection[]
+
+  @@unique([marketId, outcomeKey])
+  @@index([marketId])
+  @@map("selections")
+}
+
+model OddsHistory {
+  id          String    @id @default(uuid())
+  selectionId String
+  selection   Selection @relation(fields: [selectionId], references: [id], onDelete: Cascade)
+
+  previousOdds Decimal @db.Decimal(6, 3)
+  newOdds      Decimal @db.Decimal(6, 3)
+  reason       String // ex: "BET_PLACED", "MANUAL_ADMIN", "INITIAL"
+  createdAt    DateTime @default(now())
+
+  @@index([selectionId, createdAt])
+  @@map("odds_history")
+}
+
+// -----------------------------------------------------------------------------
+// Paris
+// -----------------------------------------------------------------------------
+
+enum BetType {
+  SIMPLE
+  COMBO
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+  CANCELLED
+}
+
+model Bet {
+  id     String  @id @default(uuid())
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   BetType   @default(SIMPLE)
+  stake  Decimal   @db.Decimal(14, 2)
+  // Cote globale du ticket (produit des cotes des selections pour un combine ;
+  // egale a l'unique cote pour un pari simple). Figee au moment du placement.
+  totalOdds        Decimal @db.Decimal(10, 3)
+  potentialPayout  Decimal @db.Decimal(14, 2)
+
+  status     BetStatus @default(PENDING)
+  placedAt   DateTime  @default(now())
+  settledAt  DateTime?
+
+  payoutAmount Decimal? @db.Decimal(14, 2)
+
+  selections BetSelection[]
+
+  @@index([userId, status])
+  @@index([status])
+  @@map("bets")
+}
+
+// Une ligne par selection du ticket (1 ligne pour un pari simple, N pour un combine)
+model BetSelection {
+  id          String   @id @default(uuid())
+  betId       String
+  bet         Bet      @relation(fields: [betId], references: [id], onDelete: Cascade)
+  selectionId String
+  selection   Selection @relation(fields: [selectionId], references: [id])
+
+  // Snapshot au moment du pari (la cote ne doit jamais etre modifiee retroactivement)
+  oddsTaken     Decimal @db.Decimal(6, 3)
+  selectionLabel String
+  marketName     String
+  eventLabel     String
+
+  result SelectionResult @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  @@index([betId])
+  @@index([selectionId])
+  @@map("bet_selections")
+}
+
+// -----------------------------------------------------------------------------
+// Administration / Audit
+// -----------------------------------------------------------------------------
+
+enum AuditAction {
+  USER_SUSPEND
+  USER_REACTIVATE
+  WALLET_CREDIT
+  WALLET_DEBIT
+  EVENT_CREATE
+  EVENT_UPDATE
+  EVENT_OPEN
+  EVENT_SUSPEND
+  EVENT_CLOSE
+  MARKET_CREATE
+  MARKET_UPDATE
+  MARKET_SUSPEND
+  EVENT_SETTLE
+  EVENT_CANCEL
+}
+
+model AuditLog {
+  id      String      @id @default(uuid())
+  adminId String
+  admin   User        @relation("AuditLogAdmin", fields: [adminId], references: [id])
+  action  AuditAction
+  targetType String   // ex: "USER", "EVENT", "MARKET"
+  targetId   String
+  reason     String? // justification obligatoire pour les actions financieres
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@index([action])
+  @@map("audit_logs")
+}

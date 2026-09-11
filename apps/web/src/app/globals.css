@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  background-color: #0b0f1a;
+  color: #e5e9f5;
+}
+
+* {
+  border-color: #263048;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0f1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #263048;
+  border-radius: 999px;
+}
+
+.card {
+  @apply bg-kanio-surface border border-kanio-border rounded-xl;
+}
+
+.btn-primary {
+  @apply bg-kanio-accent text-kanio-bg font-semibold rounded-lg px-4 py-2 hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-kanio-surface2 text-kanio-text font-medium rounded-lg px-4 py-2 border border-kanio-border hover:bg-kanio-border transition disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.input {
+  @apply bg-kanio-surface2 border border-kanio-border rounded-lg px-3 py-2 text-kanio-text placeholder:text-kanio-muted focus:outline-none focus:ring-2 focus:ring-kanio-accent;
+}
+
+.odds-btn {
+  @apply flex flex-col items-center justify-center gap-0.5 rounded-lg border border-kanio-border bg-kanio-surface2 px-2 py-2 text-center hover:border-kanio-accent hover:bg-kanio-border transition min-w-[72px];
+}
+
+.odds-btn.selected {
+  @apply border-kanio-accent bg-kanio-accent/10 ring-1 ring-kanio-accent;
+}
