@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../../lib/prisma";
+import { prisma, TX_OPTIONS } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { validate } from "../../utils/validate";
@@ -65,7 +65,7 @@ adminUsersRouter.post(
         reason: req.body.reason,
       });
       return updated;
-    });
+    }, TX_OPTIONS);
     res.json({ user: toPublicUser(user) });
   })
 );
@@ -85,7 +85,7 @@ adminUsersRouter.post(
         targetId,
       });
       return updated;
-    });
+    }, TX_OPTIONS);
     res.json({ user: toPublicUser(user) });
   })
 );
@@ -114,7 +114,7 @@ adminUsersRouter.post(
         metadata: { amount },
       });
       return walletTx;
-    });
+    }, TX_OPTIONS);
     res.status(201).json({ transaction });
   })
 );
@@ -143,7 +143,7 @@ adminUsersRouter.post(
         metadata: { amount },
       });
       return walletTx;
-    });
+    }, TX_OPTIONS);
     res.status(201).json({ transaction });
   })
 );

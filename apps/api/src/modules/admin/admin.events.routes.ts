@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Prisma } from "@kanio/db";
-import { prisma } from "../../lib/prisma";
+import { prisma, TX_OPTIONS } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { validate } from "../../utils/validate";
@@ -56,7 +56,7 @@ adminEventsRouter.post(
         targetId: created.id,
       });
       return created;
-    });
+    }, TX_OPTIONS);
     res.status(201).json({ event });
   })
 );
@@ -84,7 +84,7 @@ adminEventsRouter.put(
         metadata: req.body,
       });
       return updated;
-    });
+    }, TX_OPTIONS);
     res.json({ event });
   })
 );
@@ -109,7 +109,7 @@ function transitionEventStatus(action: "OPEN" | "SUSPEND" | "CLOSE") {
         targetId: eventId,
       });
       return updated;
-    });
+    }, TX_OPTIONS);
     res.json({ event });
   });
 }
@@ -184,7 +184,7 @@ adminEventsRouter.post(
       });
 
       return tx.market.findUniqueOrThrow({ where: { id: createdMarket.id }, include: { selections: true } });
-    });
+    }, TX_OPTIONS);
     res.status(201).json({ market });
   })
 );
@@ -211,7 +211,7 @@ adminMarketsRouter.put(
         metadata: { status: req.body.status },
       });
       return updated;
-    });
+    }, TX_OPTIONS);
     res.json({ market });
   })
 );

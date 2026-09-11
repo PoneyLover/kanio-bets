@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
-import { prisma } from "../../lib/prisma";
+import { prisma, TX_OPTIONS } from "../../lib/prisma";
 import { env } from "../../env";
 import { AppError } from "../../utils/AppError";
 import { hashPassword, verifyPassword } from "../../utils/password";
@@ -62,7 +62,7 @@ export const AuthService = {
         },
       });
       return created;
-    });
+    }, TX_OPTIONS);
 
     const tokens = await issueTokenPair(user.id, user.role);
     return { user, ...tokens };

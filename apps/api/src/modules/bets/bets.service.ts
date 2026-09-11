@@ -1,5 +1,5 @@
 import { Prisma } from "@kanio/db";
-import { prisma } from "../../lib/prisma";
+import { prisma, TX_OPTIONS } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
 import { WalletService } from "../wallet/wallet.service";
 import { OddsService } from "../odds/odds.service";
@@ -98,7 +98,7 @@ export const BetsService = {
         where: { id: bet.id },
         include: { selections: true },
       });
-    });
+    }, TX_OPTIONS);
   },
 
   async listUserBets(userId: string, filters: { status?: string; skip?: number; take?: number } = {}) {

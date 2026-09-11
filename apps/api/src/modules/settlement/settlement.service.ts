@@ -1,6 +1,6 @@
 import { Prisma } from "@kanio/db";
 import type { PrismaTransactionClient } from "../../types/prismaTx";
-import { prisma } from "../../lib/prisma";
+import { prisma, TX_OPTIONS } from "../../lib/prisma";
 import { AppError } from "../../utils/AppError";
 import { WalletService } from "../wallet/wallet.service";
 import { AuditService } from "../admin/audit.service";
@@ -132,7 +132,7 @@ export const SettlementService = {
       });
 
       return { event: await tx.event.findUniqueOrThrow({ where: { id: eventId } }), ...summary };
-    });
+    }, TX_OPTIONS);
   },
 
   /**
@@ -172,6 +172,6 @@ export const SettlementService = {
       });
 
       return { event: await tx.event.findUniqueOrThrow({ where: { id: eventId } }), ...summary };
-    });
+    }, TX_OPTIONS);
   },
 };
