@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/sports", label: "Sports" },
   { href: "/events", label: "Evenements" },
   { href: "/bets", label: "Mes paris" },
+  { href: "/activite", label: "Activite" },
   { href: "/leaderboard", label: "Classement" },
 ];
 

@@ -8,6 +8,18 @@ import { placeBetSchema } from "./bets.schemas";
 
 export const betsRouter = Router();
 
+// Route publique (avant le middleware requireAuth ci-dessous) : liste de tous
+// les paris de tous les utilisateurs, visible par tout le monde sans connexion.
+betsRouter.get(
+  "/public",
+  asyncHandler(async (req, res) => {
+    const skip = Number(req.query.skip ?? 0);
+    const take = Number(req.query.take ?? 50);
+    const bets = await BetsService.listPublicBets({ skip, take });
+    res.json({ bets });
+  })
+);
+
 betsRouter.use(requireAuth);
 
 betsRouter.post(

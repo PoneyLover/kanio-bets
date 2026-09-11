@@ -101,6 +101,22 @@ export const BetsService = {
     }, TX_OPTIONS);
   },
 
+  /**
+   * Flux public de tous les paris de tous les utilisateurs (nom d'utilisateur
+   * + mise inclus), sans authentification requise. Meme logique de
+   * transparence que le classement (`/api/leaderboard`), qui expose deja les
+   * noms d'utilisateur publiquement.
+   */
+  async listPublicBets(filters: { skip?: number; take?: number } = {}) {
+    const bets = await prisma.bet.findMany({
+      include: { selections: true, user: { select: { username: true } } },
+      orderBy: { placedAt: "desc" },
+      skip: filters.skip ?? 0,
+      take: Math.min(filters.take ?? 50, 100),
+    });
+    return bets.map(({ user, ...bet }) => ({ ...bet, username: user.username }));
+  },
+
   async listUserBets(userId: string, filters: { status?: string; skip?: number; take?: number } = {}) {
     return prisma.bet.findMany({
       where: {

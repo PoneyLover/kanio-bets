@@ -106,6 +106,10 @@ export interface Bet {
   selections: BetSelectionItem[];
 }
 
+export interface PublicBet extends Bet {
+  username: string;
+}
+
 export interface LeaderboardRow {
   userId: string;
   username: string;
