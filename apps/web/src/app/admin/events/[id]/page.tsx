@@ -80,7 +80,12 @@ export default function AdminEventDetailPage() {
         </div>
       ))}
 
-      <AddMarketForm eventId={event.id} onCreated={load} />
+      <AddMarketForm
+        eventId={event.id}
+        homeLabel={event.homeParticipant.name}
+        awayLabel={event.awayParticipant.name}
+        onCreated={load}
+      />
 
       {canSettle && <SettleForm eventId={event.id} onDone={(m) => { setMessage(m); load(); }} />}
       {canCancel && <CancelForm eventId={event.id} onDone={(m) => { setMessage(m); load(); }} />}
@@ -172,9 +177,20 @@ function CancelForm({ eventId, onDone }: { eventId: string; onDone: (msg: string
   );
 }
 
-function AddMarketForm({ eventId, onCreated }: { eventId: string; onCreated: () => void }) {
+function AddMarketForm({
+  eventId,
+  homeLabel,
+  awayLabel,
+  onCreated,
+}: {
+  eventId: string;
+  homeLabel: string;
+  awayLabel: string;
+  onCreated: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"MATCH_WINNER" | "OVER_UNDER">("MATCH_WINNER");
+  const [allowDraw, setAllowDraw] = useState(true);
   const [line, setLine] = useState("2.5");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -184,14 +200,15 @@ function AddMarketForm({ eventId, onCreated }: { eventId: string; onCreated: () 
     setBusy(true);
     try {
       if (type === "MATCH_WINNER") {
+        const selections = [
+          { label: homeLabel, outcomeKey: "HOME", odds: allowDraw ? 2.0 : 1.8 },
+          ...(allowDraw ? [{ label: "Nul", outcomeKey: "DRAW", odds: 3.2 }] : []),
+          { label: awayLabel, outcomeKey: "AWAY", odds: allowDraw ? 3.6 : 1.8 },
+        ];
         await api.post(`/api/admin/events/${eventId}/markets`, {
           type: "MATCH_WINNER",
-          name: "Vainqueur du match",
-          selections: [
-            { label: "Domicile", outcomeKey: "HOME", odds: 2.0 },
-            { label: "Nul", outcomeKey: "DRAW", odds: 3.2 },
-            { label: "Exterieur", outcomeKey: "AWAY", odds: 3.6 },
-          ],
+          name: "Vainqueur",
+          selections,
         });
       } else {
         await api.post(`/api/admin/events/${eventId}/markets`, {
@@ -225,9 +242,15 @@ function AddMarketForm({ eventId, onCreated }: { eventId: string; onCreated: () 
     <div className="card p-5 space-y-3">
       <h2 className="font-semibold">Nouveau marche</h2>
       <select className="input w-full" value={type} onChange={(e) => setType(e.target.value as "MATCH_WINNER" | "OVER_UNDER")}>
-        <option value="MATCH_WINNER">Vainqueur du match (1X2)</option>
+        <option value="MATCH_WINNER">Vainqueur</option>
         <option value="OVER_UNDER">Total buts (Over/Under)</option>
       </select>
+      {type === "MATCH_WINNER" && (
+        <label className="flex items-center gap-2 text-sm text-kanio-muted">
+          <input type="checkbox" checked={allowDraw} onChange={(e) => setAllowDraw(e.target.checked)} />
+          Match nul possible (decoche pour un duel sans egalite, ex: pile ou face)
+        </label>
+      )}
       {type === "OVER_UNDER" && (
         <input className="input w-32" value={line} onChange={(e) => setLine(e.target.value)} placeholder="Ligne (ex: 2.5)" />
       )}

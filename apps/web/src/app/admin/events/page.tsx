@@ -39,12 +39,27 @@ export default function AdminEventsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg">Evenements</h2>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h2 className="font-semibold text-lg">Evenements</h2>
+          <Link href="/admin/catalog" className="text-xs text-kanio-accent">
+            + Ajouter un sport, une competition ou un participant
+          </Link>
+        </div>
         <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>
           {showForm ? "Annuler" : "+ Nouvel evenement"}
         </button>
       </div>
+
+      {showForm && options && options.participants.length < 2 && (
+        <p className="text-sm text-kanio-loss mb-3">
+          Il faut au moins 2 participants et 1 competition pour creer un evenement. Ajoute-les dans l&apos;onglet{" "}
+          <Link href="/admin/catalog" className="underline">
+            Sports &amp; equipes
+          </Link>
+          .
+        </p>
+      )}
 
       {showForm && options && (
         <CreateEventForm

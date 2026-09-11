@@ -49,6 +49,16 @@ export const updateMarketStatusSchema = z.object({
   status: z.enum(["OPEN", "SUSPENDED", "CLOSED"]),
 });
 
+export const createSportSchema = z.object({
+  name: z.string().min(1).max(60),
+  key: z
+    .string()
+    .min(2)
+    .max(40)
+    .regex(/^[a-z0-9-]+$/, "Minuscules, chiffres et tirets uniquement")
+    .optional(),
+});
+
 export const createParticipantSchema = z.object({
   name: z.string().min(1).max(80),
   shortName: z.string().max(20).optional(),
