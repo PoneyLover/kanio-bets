@@ -9,13 +9,13 @@ export default function HomePage() {
   return (
     <div className="space-y-10">
       <section className="card p-8 md:p-12 text-center bg-gradient-to-br from-kanio-surface to-kanio-surface2">
-        <p className="text-kanio-accent font-semibold tracking-wide text-sm mb-2">100% VIRTUEL - 0% ARGENT REEL</p>
+        <p className="text-kanio-accent font-semibold tracking-wide text-sm mb-2">Le site officiel de paris du CANAL</p>
         <h1 className="text-3xl md:text-5xl font-black mb-4">
-          Parie en <span className="text-kanio-accent">KANIO</span>, gagne du <span className="text-kanio-accent2">KAN</span>
+          Salut mon <span className="text-kanio-accent">BéBé</span>, Alors comme ca tu veux gagner des <span className="text-kanio-accent2">KanioS</span>
         </h1>
         <p className="text-kanio-muted max-w-2xl mx-auto mb-6">
-          KANIO est une plateforme de paris sportifs 100% fictive. Aucune carte bancaire, aucun paiement, aucun retrait :
-          uniquement une monnaie virtuelle sans valeur reelle, pour le plaisir du jeu et de la competition entre amis.
+          Alors les gosses, il va falloir Grand BOSSER!
+          Inscris toi et parie gros!
         </p>
         <div className="flex items-center justify-center gap-3">
           {user ? (
