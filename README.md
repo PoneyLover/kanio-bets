@@ -336,7 +336,9 @@ paris en attente lies a ses marches.
 2. Sur [render.com](https://render.com), "New +" -> "Web Service" -> connecter le repo.
 3. **Root Directory** : `apps/api` n'est pas suffisant seul car le monorepo doit etre installe depuis la
    racine. Configurer :
-   - Build Command : `npm install && npm run build:api`
+   - Build Command : `npm install --include=dev && npm run build:api` (le `--include=dev` est necessaire
+     car `NODE_ENV=production`, defini plus bas, ferait sinon ignorer les devDependencies - TypeScript,
+     Prisma CLI... - pourtant indispensables pour compiler ; voir Troubleshooting si ce piege vous mord)
    - Start Command : `npm run start -w apps/api` (ou `node apps/api/dist/index.js`)
 4. Variables d'environnement (Render dashboard) : toutes celles de `apps/api/.env` (DATABASE_URL avec
    `pgbouncer=true`, secrets JWT generes pour la prod, `CORS_ORIGIN` = URL Vercel du frontend,
@@ -399,6 +401,23 @@ c'est en revanche un vrai bug a investiguer.
 macOS x64/arm64) ; aucune chaine de compilation C++ n'est necessaire dans la plupart des cas. Si votre
 environnement bloque l'execution de scripts `postinstall`/`preinstall` (politiques de securite type
 Application Control), autorisez explicitement les scripts de `argon2`, `prisma`, `@prisma/client` et `esbuild`.
+
+**Build Render qui echoue alors que le meme code compile en local (TS2304/TS2591 "Cannot find name
+'process'/'global'", ou TS5108 sur `moduleResolution`)**
+Cause : la variable d'environnement `NODE_ENV=production` (necessaire a l'execution de l'API) est aussi
+appliquee par Render pendant l'**etape de build**, et `npm install` sous `NODE_ENV=production` ignore les
+`devDependencies` (TypeScript, `@types/node`, Prisma CLI...) qui sont pourtant indispensables pour compiler
+le projet. Le symptome est trompeur : le nombre de paquets installes reste anormalement bas (~124 au lieu
+d'environ 290) et n'augmente jamais, meme apres "Clear build cache & deploy" ou apres avoir ajoute une
+dependance manquante - car ce n'est pas un probleme de cache mais de filtrage systematique des
+devDependencies a chaque install.
+Solution : forcer leur installation independamment de `NODE_ENV` en utilisant comme Build Command sur
+Render :
+```
+npm install --include=dev && npm run build:api
+```
+(`--include=dev` annule explicitement l'effet de `NODE_ENV=production` sur `npm install`, sans avoir a
+retirer cette variable qui reste utile a l'execution).
 
 ## 17. Limites connues / pistes d'evolution
 
