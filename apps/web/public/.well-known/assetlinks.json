@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.kanio_bets_web.twa",
+        "sha256_cert_fingerprints": ["F3:90:9F:04:E7:5A:C3:E8:E2:C3:EE:A4:16:2E:F5:9B:15:B1:0E:DA:C8:BE:44:BA:C4:1E:7C:EB:A7:C5:E1:EA"]
+      }
+    }]
